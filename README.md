@@ -19,6 +19,9 @@ This repository includes tools to help you check open pull requests:
 ### Using the Script
 
 ```bash
+# Make the script executable (if needed)
+chmod +x check-prs.sh
+
 # Run the convenience script
 ./check-prs.sh
 ```

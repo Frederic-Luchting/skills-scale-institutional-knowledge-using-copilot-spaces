@@ -18,7 +18,7 @@ echo -e "${BLUE}=== Checking Open Pull Requests ===${NC}\n"
 # Check if gh CLI is available and authenticated
 if command -v gh &> /dev/null; then
     # Try to use gh CLI if authenticated
-    if gh auth status &> /dev/null 2>&1; then
+    if gh auth status > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Using GitHub CLI${NC}"
         echo -e "${GREEN}Repository:${NC} $OWNER/$REPO"
         echo ""
@@ -34,8 +34,10 @@ if command -v gh &> /dev/null; then
 
 {{end}}' 2>/dev/null; then
             # Count open PRs
-            PR_COUNT=$(gh pr list --repo "$OWNER/$REPO" --state open --json number --jq 'length' 2>/dev/null || echo "0")
-            echo -e "${BLUE}Total open pull requests: ${PR_COUNT}${NC}"
+            PR_COUNT=$(gh pr list --repo "$OWNER/$REPO" --state open --json number --jq 'length' 2>/dev/null)
+            if [ -n "$PR_COUNT" ]; then
+                echo -e "${BLUE}Total open pull requests: ${PR_COUNT}${NC}"
+            fi
             exit 0
         fi
     fi
@@ -54,15 +56,17 @@ if command -v curl &> /dev/null && command -v jq &> /dev/null; then
     BODY=$(echo "$RESPONSE" | sed '$d')
     
     # Check if API call was successful
-    if [ "$HTTP_CODE" = "200" ] && [ -n "$BODY" ] && echo "$BODY" | jq empty 2>/dev/null; then
+    if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | jq empty 2>/dev/null; then
         # Parse and display PR information
         echo -e "${GREEN}Open Pull Requests:${NC}"
-        echo "$BODY" | jq -r '.[] | "PR #\(.number): \(.title)\n  Author: \(.user.login)\n  Created: \(.created_at)\n  Updated: \(.updated_at)\n  URL: \(.html_url)\n"' 2>/dev/null
-        
-        # Count open PRs
-        PR_COUNT=$(echo "$BODY" | jq 'length' 2>/dev/null || echo "0")
-        echo -e "${BLUE}Total open pull requests: ${PR_COUNT}${NC}"
-        exit 0
+        if echo "$BODY" | jq -r '.[] | "PR #\(.number): \(.title)\n  Author: \(.user.login)\n  Created: \(.created_at)\n  Updated: \(.updated_at)\n  URL: \(.html_url)\n"' 2>/dev/null; then
+            # Count open PRs
+            PR_COUNT=$(echo "$BODY" | jq 'length' 2>/dev/null)
+            if [ -n "$PR_COUNT" ]; then
+                echo -e "${BLUE}Total open pull requests: ${PR_COUNT}${NC}"
+            fi
+            exit 0
+        fi
     else
         echo -e "${YELLOW}Unable to access GitHub API (may be blocked or rate-limited)${NC}"
     fi
@@ -79,3 +83,4 @@ echo "1. Install and authenticate GitHub CLI: gh auth login"
 echo "2. Use GitHub web interface (link above)"
 echo "3. Use GitHub Copilot Spaces with: 'check open pull requests'"
 echo -e "${BLUE}========================================${NC}"
+exit 1
